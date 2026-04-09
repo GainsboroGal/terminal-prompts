@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generative Art Viewer</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+  <style>
+    /* =========================================================
+       FIXED: Anthropic branding — do not modify
+       ========================================================= */
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&family=Lora:ital,wght@0,400;0,600;1,400&display=swap');
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      display: flex;
+      height: 100vh;
+      background: #0f0f0f;
+      color: #e8e6e0;
+      font-family: 'Poppins', sans-serif;
+      overflow: hidden;
+    }
+
+    /* =========================================================
+       FIXED: Sidebar layout
+       ========================================================= */
+    #sidebar {
+      width: 320px;
+      min-width: 320px;
+      height: 100vh;
+      background: linear-gradient(180deg, #1a1a1a 0%, #141414 100%);
+      border-right: 1px solid #2a2a2a;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      padding: 24px 20px;
+      gap: 24px;
+    }
+
+    /* =========================================================
+       VARIABLE: Title — replace with artwork name
+       ========================================================= */
+    .artwork-title {
+      font-family: 'Lora', serif;
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: #f5f3ee;
+      line-height: 1.3;
+    }
+
+    .artwork-subtitle {
+      font-size: 0.75rem;
+      color: #888;
+      margin-top: 4px;
+      font-style: italic;
+    }
+
+    /* =========================================================
+       FIXED: Section styling
+       ========================================================= */
+    .section {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .section-label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #cf5f2e; /* Anthropic orange */
+      padding-bottom: 6px;
+      border-bottom: 1px solid #2a2a2a;
+    }
+
+    /* =========================================================
+       FIXED: Seed controls
+       ========================================================= */
+    .seed-display {
+      font-family: 'Lora', serif;
+      font-size: 1.8rem;
+      font-weight: 600;
+      color: #f5f3ee;
+      text-align: center;
+      padding: 8px 0;
+    }
+
+    .seed-nav {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    }
+
+    .seed-jump {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .seed-jump input {
+      flex: 1;
+      background: #222;
+      border: 1px solid #333;
+      color: #e8e6e0;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.8rem;
+    }
+
+    /* =========================================================
+       VARIABLE: Parameter controls — replace per artwork
+       ========================================================= */
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .control-group label {
+      font-size: 0.75rem;
+      color: #aaa;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .control-group .value-display {
+      color: #cf5f2e;
+      font-weight: 500;
+    }
+
+    .control-group input[type="range"] {
+      width: 100%;
+      accent-color: #cf5f2e;
+      cursor: pointer;
+    }
+
+    .control-group input[type="color"] {
+      width: 100%;
+      height: 32px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background: none;
+    }
+
+    /* =========================================================
+       FIXED: Buttons
+       ========================================================= */
+    .btn {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 6px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    .btn:hover { opacity: 0.85; }
+
+    .btn-primary {
+      background: #cf5f2e;
+      color: #fff;
+    }
+
+    .btn-secondary {
+      background: #2a2a2a;
+      color: #e8e6e0;
+      border: 1px solid #333;
+    }
+
+    .btn-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .btn-full {
+      grid-column: 1 / -1;
+    }
+
+    /* =========================================================
+       FIXED: Canvas area
+       ========================================================= */
+    #canvas-area {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0a0a0a;
+      overflow: hidden;
+    }
+
+    #canvas-container canvas {
+      max-width: 100%;
+      max-height: 100vh;
+    }
+
+    /* Mobile stacking */
+    @media (max-width: 768px) {
+      body { flex-direction: column; overflow: auto; }
+      #sidebar { width: 100%; min-width: unset; height: auto; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- =====================================================
+       FIXED: Sidebar structure
+       ===================================================== -->
+  <div id="sidebar">
+
+    <!-- VARIABLE: Replace title and subtitle -->
+    <div>
+      <div class="artwork-title">Artwork Title</div>
+      <div class="artwork-subtitle">Algorithmic movement name</div>
+    </div>
+
+    <!-- FIXED: Seed section -->
+    <div class="section">
+      <div class="section-label">Seed</div>
+      <div class="seed-display" id="seed-display">12345</div>
+      <div class="seed-nav">
+        <button class="btn btn-secondary" onclick="previousSeed()">← Prev</button>
+        <button class="btn btn-secondary" onclick="randomSeedAndUpdate()">Random</button>
+        <button class="btn btn-secondary" onclick="nextSeed()">Next →</button>
+      </div>
+      <div class="seed-jump">
+        <input type="number" id="seed-input" placeholder="Jump to seed…" min="1">
+        <button class="btn btn-primary" onclick="updateSeed()">Go</button>
+      </div>
+    </div>
+
+    <!-- VARIABLE: Parameters section — replace sliders per artwork -->
+    <div class="section">
+      <div class="section-label">Parameters</div>
+
+      <div class="control-group">
+        <label>Particle Count <span class="value-display" id="particleCount-value">500</span></label>
+        <input type="range" id="particleCount" min="50" max="2000" step="50" value="500"
+               oninput="updateParam('particleCount', +this.value)">
+      </div>
+
+      <div class="control-group">
+        <label>Flow Speed <span class="value-display" id="flowSpeed-value">1.0</span></label>
+        <input type="range" id="flowSpeed" min="0.1" max="5.0" step="0.1" value="1.0"
+               oninput="updateParam('flowSpeed', +this.value)">
+      </div>
+
+      <div class="control-group">
+        <label>Noise Scale <span class="value-display" id="noiseScale-value">0.01</span></label>
+        <input type="range" id="noiseScale" min="0.001" max="0.05" step="0.001" value="0.01"
+               oninput="updateParam('noiseScale', +this.value)">
+      </div>
+
+      <div class="control-group">
+        <label>Trail Length <span class="value-display" id="trailLength-value">50</span></label>
+        <input type="range" id="trailLength" min="5" max="200" step="5" value="50"
+               oninput="updateParam('trailLength', +this.value)">
+      </div>
+    </div>
+
+    <!-- OPTIONAL: Colors section — include only if dynamic palette needed -->
+    <div class="section">
+      <div class="section-label">Colors</div>
+      <div class="control-group">
+        <label>Primary</label>
+        <input type="color" id="color0" value="#cf5f2e" oninput="updateColor(0, this.value)">
+      </div>
+      <div class="control-group">
+        <label>Secondary</label>
+        <input type="color" id="color1" value="#3b82f6" oninput="updateColor(1, this.value)">
+      </div>
+      <div class="control-group">
+        <label>Accent</label>
+        <input type="color" id="color2" value="#10b981" oninput="updateColor(2, this.value)">
+      </div>
+    </div>
+
+    <!-- FIXED: Actions section -->
+    <div class="section">
+      <div class="section-label">Actions</div>
+      <div class="btn-grid">
+        <button class="btn btn-primary btn-full" onclick="regenerate()">Regenerate</button>
+        <button class="btn btn-secondary" onclick="resetParameters()">Reset</button>
+        <button class="btn btn-secondary" onclick="exportImage()">Download PNG</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FIXED: Canvas area -->
+  <div id="canvas-area">
+    <div id="canvas-container"></div>
+  </div>
+
+  <script>
+    // =========================================================
+    // VARIABLE: Replace params, algorithm, and UI handlers
+    // =========================================================
+
+    let params = {
+      seed: 12345,
+      particleCount: 500,
+      flowSpeed: 1.0,
+      noiseScale: 0.01,
+      trailLength: 50,
+      colorPalette: ['#cf5f2e', '#3b82f6', '#10b981'],
+    };
+
+    const defaultParams = JSON.parse(JSON.stringify(params));
+
+    // =========================================================
+    // VARIABLE: p5.js sketch — replace with your algorithm
+    // =========================================================
+
+    function setup() {
+      let canvas = createCanvas(1200, 1200);
+      canvas.parent('canvas-container');
+      randomSeed(params.seed);
+      noiseSeed(params.seed);
+      // Initialize your system here
+    }
+
+    function draw() {
+      // Your generative algorithm here
+    }
+
+    // =========================================================
+    // FIXED: Seed navigation
+    // =========================================================
+
+    function updateSeed() {
+      const val = parseInt(document.getElementById('seed-input').value);
+      if (!isNaN(val) && val > 0) {
+        params.seed = val;
+        document.getElementById('seed-display').textContent = val;
+        regenerate();
+      }
+    }
+
+    function previousSeed() {
+      params.seed = Math.max(1, params.seed - 1);
+      document.getElementById('seed-display').textContent = params.seed;
+      regenerate();
+    }
+
+    function nextSeed() {
+      params.seed += 1;
+      document.getElementById('seed-display').textContent = params.seed;
+      regenerate();
+    }
+
+    function randomSeedAndUpdate() {
+      params.seed = Math.floor(Math.random() * 99999) + 1;
+      document.getElementById('seed-display').textContent = params.seed;
+      regenerate();
+    }
+
+    function regenerate() {
+      randomSeed(params.seed);
+      noiseSeed(params.seed);
+      // Re-initialize your system here
+    }
+
+    // =========================================================
+    // VARIABLE: Parameter and color update handlers
+    // =========================================================
+
+    function updateParam(name, value) {
+      params[name] = value;
+      const display = document.getElementById(name + '-value');
+      if (display) display.textContent = value;
+      // Apply change to your system here
+    }
+
+    function updateColor(index, value) {
+      params.colorPalette[index] = value;
+      // Apply color change to your system here
+    }
+
+    function resetParameters() {
+      Object.assign(params, JSON.parse(JSON.stringify(defaultParams)));
+      // Sync all sliders and pickers back to default values
+      document.querySelectorAll('input[type="range"]').forEach(input => {
+        if (params[input.id] !== undefined) {
+          input.value = params[input.id];
+          const display = document.getElementById(input.id + '-value');
+          if (display) display.textContent = params[input.id];
+        }
+      });
+      regenerate();
+    }
+
+    // =========================================================
+    // FIXED: Export
+    // =========================================================
+
+    function exportImage() {
+      saveCanvas('generative-art-' + params.seed, 'png');
+    }
+  </script>
+
+</body>
+</html>
